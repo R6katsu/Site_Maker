@@ -65,6 +65,12 @@
             color: #555;
             margin-top: 5px;
         }
+        .post img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -78,7 +84,8 @@
     </div>
     <form id="postForm">
         <input type="text" id="title" placeholder="タイトル" required>
-        <textarea id="content" rows="5" placeholder="本文" required></textarea>
+        <textarea id="content" rows="5" placeholder="本文 ([image] または ![](URL) で画像挿入)" required></textarea>
+        <input type="file" id="image" accept="image/*" multiple>
         <button type="submit">投稿</button>
     </form>
     <div class="posts" id="posts"></div>
@@ -87,6 +94,7 @@
         const form = document.getElementById('postForm');
         const postsContainer = document.getElementById('posts');
         const sortSelect = document.getElementById('sortOrder');
+        const imageInput = document.getElementById('image');
         const storageKey = 'blog_posts';
         let dragged = null;
 
@@ -95,6 +103,7 @@
             if (saved) {
                 JSON.parse(saved).forEach(post => {
                     if (!post.timestamp) post.timestamp = Date.now();
+                    if (post.image && !post.images) post.images = [post.image];
                     addPostToDOM(post, true);
                 });
             }
@@ -111,17 +120,37 @@
             return `${y}年${m}月${day}日${h}時${min}分${s}秒`;
         }
 
+        function escapeHTML(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function escapeAttr(str) {
+            return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function renderContent(text, images = []) {
+            let html = escapeHTML(text);
+            html = html.replace(/!\[(.*?)\]\((.*?)\)/g, (_, alt, url) => {
+                return `<img src="${escapeAttr(url)}" alt="${escapeAttr(alt)}">`;
+            });
+            images.forEach(img => {
+                html = html.replace('[image]', `<img src="${img}">`);
+            });
+            return html.replace(/\n/g, '<br>');
+        }
+
         function addPostToDOM(post, append = false) {
             const div = document.createElement('div');
             div.className = 'post';
             div.draggable = true;
             div.dataset.timestamp = post.timestamp;
+            div.dataset.post = JSON.stringify(post);
 
             const titleEl = document.createElement('h2');
             titleEl.textContent = post.title;
 
             const contentEl = document.createElement('p');
-            contentEl.textContent = post.content;
+            contentEl.innerHTML = renderContent(post.content, post.images || []);
 
             const timeEl = document.createElement('div');
             timeEl.className = 'timestamp';
@@ -135,11 +164,11 @@
                 if (editBtn.textContent === '編集') {
                     const tInput = document.createElement('input');
                     tInput.type = 'text';
-                    tInput.value = titleEl.textContent;
+                    tInput.value = post.title;
 
                     const cInput = document.createElement('textarea');
                     cInput.rows = 5;
-                    cInput.value = contentEl.textContent;
+                    cInput.value = post.content;
 
                     div.replaceChild(tInput, titleEl);
                     div.replaceChild(cInput, contentEl);
@@ -150,14 +179,18 @@
                     titleEl._input = tInput;
                     contentEl._input = cInput;
                 } else {
-                    titleEl.textContent = titleEl._input.value.trim();
-                    contentEl.textContent = contentEl._input.value.trim();
+                    post.title = titleEl._input.value.trim();
+                    post.content = contentEl._input.value.trim();
+
+                    titleEl.textContent = post.title;
+                    contentEl.innerHTML = renderContent(post.content, post.images || []);
 
                     div.replaceChild(titleEl, titleEl._input);
                     div.replaceChild(contentEl, contentEl._input);
 
                     editBtn.textContent = '編集';
                     div.draggable = true;
+                    div.dataset.post = JSON.stringify(post);
                     savePostsOrder();
                 }
             });
@@ -177,11 +210,7 @@
         function savePostsOrder() {
             const posts = [];
             postsContainer.querySelectorAll('.post').forEach(p => {
-                posts.push({
-                    title: p.querySelector('h2').textContent,
-                    content: p.querySelector('p').textContent,
-                    timestamp: parseInt(p.dataset.timestamp)
-                });
+                posts.push(JSON.parse(p.dataset.post));
             });
             localStorage.setItem(storageKey, JSON.stringify(posts));
         }
@@ -193,11 +222,29 @@
                 content: document.getElementById('content').value.trim(),
                 timestamp: Date.now()
             };
-            if (post.title && post.content) {
-                addPostToDOM(post);
-                savePostsOrder();
-                sortPosts(sortSelect.value);
-                form.reset();
+
+            const files = Array.from(imageInput.files);
+
+            const finalize = () => {
+                if (post.title && post.content) {
+                    addPostToDOM(post);
+                    savePostsOrder();
+                    sortPosts(sortSelect.value);
+                    form.reset();
+                }
+            };
+
+            if (files.length) {
+                Promise.all(files.map(f => new Promise(res => {
+                    const reader = new FileReader();
+                    reader.onload = e2 => res(e2.target.result);
+                    reader.readAsDataURL(f);
+                }))).then(resArr => {
+                    post.images = resArr;
+                    finalize();
+                });
+            } else {
+                finalize();
             }
         });
 
