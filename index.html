@@ -64,6 +64,13 @@
 </head>
 <body>
     <h1>ブログ作成サイト</h1>
+    <div style="text-align:center;margin-bottom:10px;">
+        <label for="sortOrder">並び替え:</label>
+        <select id="sortOrder">
+            <option value="newest">新しい順</option>
+            <option value="oldest">古い順</option>
+        </select>
+    </div>
     <form id="postForm">
         <input type="text" id="title" placeholder="タイトル" required>
         <textarea id="content" rows="5" placeholder="本文" required></textarea>
@@ -74,13 +81,17 @@
     <script>
         const form = document.getElementById('postForm');
         const postsContainer = document.getElementById('posts');
+        const sortSelect = document.getElementById('sortOrder');
         const storageKey = 'blog_posts';
         let dragged = null;
 
         function loadPosts() {
             const saved = localStorage.getItem(storageKey);
             if (saved) {
-                JSON.parse(saved).forEach(post => addPostToDOM(post, true));
+                JSON.parse(saved).forEach(post => {
+                    if (!post.timestamp) post.timestamp = Date.now();
+                    addPostToDOM(post, true);
+                });
             }
         }
 
@@ -88,6 +99,7 @@
             const div = document.createElement('div');
             div.className = 'post';
             div.draggable = true;
+            div.dataset.timestamp = post.timestamp;
 
             const titleEl = document.createElement('h2');
             titleEl.textContent = post.title;
@@ -146,7 +158,8 @@
             postsContainer.querySelectorAll('.post').forEach(p => {
                 posts.push({
                     title: p.querySelector('h2').textContent,
-                    content: p.querySelector('p').textContent
+                    content: p.querySelector('p').textContent,
+                    timestamp: parseInt(p.dataset.timestamp)
                 });
             });
             localStorage.setItem(storageKey, JSON.stringify(posts));
@@ -156,11 +169,13 @@
             e.preventDefault();
             const post = {
                 title: document.getElementById('title').value.trim(),
-                content: document.getElementById('content').value.trim()
+                content: document.getElementById('content').value.trim(),
+                timestamp: Date.now()
             };
             if (post.title && post.content) {
                 addPostToDOM(post);
                 savePostsOrder();
+                sortPosts(sortSelect.value);
                 form.reset();
             }
         });
@@ -200,7 +215,24 @@
             }
         });
 
+        function sortPosts(order) {
+            const saved = localStorage.getItem(storageKey);
+            if (!saved) return;
+            const posts = JSON.parse(saved);
+            posts.sort((a, b) => {
+                return order === 'oldest' ? a.timestamp - b.timestamp : b.timestamp - a.timestamp;
+            });
+            postsContainer.innerHTML = '';
+            posts.forEach(p => addPostToDOM(p, true));
+            localStorage.setItem(storageKey, JSON.stringify(posts));
+        }
+
+        sortSelect.addEventListener('change', e => {
+            sortPosts(e.target.value);
+        });
+
         loadPosts();
+        sortPosts(sortSelect.value);
     </script>
 </body>
 </html>
