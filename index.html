@@ -65,6 +65,12 @@
             color: #555;
             margin-top: 5px;
         }
+        .post img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -79,6 +85,7 @@
     <form id="postForm">
         <input type="text" id="title" placeholder="タイトル" required>
         <textarea id="content" rows="5" placeholder="本文" required></textarea>
+        <input type="file" id="image" accept="image/*">
         <button type="submit">投稿</button>
     </form>
     <div class="posts" id="posts"></div>
@@ -87,6 +94,7 @@
         const form = document.getElementById('postForm');
         const postsContainer = document.getElementById('posts');
         const sortSelect = document.getElementById('sortOrder');
+        const imageInput = document.getElementById('image');
         const storageKey = 'blog_posts';
         let dragged = null;
 
@@ -116,6 +124,7 @@
             div.className = 'post';
             div.draggable = true;
             div.dataset.timestamp = post.timestamp;
+            if (post.image) div.dataset.image = post.image;
 
             const titleEl = document.createElement('h2');
             titleEl.textContent = post.title;
@@ -126,6 +135,12 @@
             const timeEl = document.createElement('div');
             timeEl.className = 'timestamp';
             timeEl.textContent = formatTimestamp(post.timestamp);
+
+            let imgEl = null;
+            if (post.image) {
+                imgEl = document.createElement('img');
+                imgEl.src = post.image;
+            }
 
             const editBtn = document.createElement('button');
             editBtn.textContent = '編集';
@@ -164,6 +179,7 @@
 
             div.appendChild(titleEl);
             div.appendChild(contentEl);
+            if (imgEl) div.appendChild(imgEl);
             div.appendChild(timeEl);
             div.appendChild(editBtn);
 
@@ -180,6 +196,7 @@
                 posts.push({
                     title: p.querySelector('h2').textContent,
                     content: p.querySelector('p').textContent,
+                    image: p.dataset.image || '',
                     timestamp: parseInt(p.dataset.timestamp)
                 });
             });
@@ -193,11 +210,27 @@
                 content: document.getElementById('content').value.trim(),
                 timestamp: Date.now()
             };
-            if (post.title && post.content) {
-                addPostToDOM(post);
-                savePostsOrder();
-                sortPosts(sortSelect.value);
-                form.reset();
+
+            const file = imageInput.files[0];
+
+            const finalize = () => {
+                if (post.title && post.content) {
+                    addPostToDOM(post);
+                    savePostsOrder();
+                    sortPosts(sortSelect.value);
+                    form.reset();
+                }
+            };
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    post.image = ev.target.result;
+                    finalize();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                finalize();
             }
         });
 
