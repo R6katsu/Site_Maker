@@ -46,6 +46,10 @@
             padding: 10px;
             border-radius: 5px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: move;
+        }
+        .drag-over {
+            border: 2px dashed #007bff;
         }
         .post h2 {
             margin-top: 0;
@@ -65,29 +69,40 @@
         const form = document.getElementById('postForm');
         const postsContainer = document.getElementById('posts');
         const storageKey = 'blog_posts';
+        let dragged = null;
 
         function loadPosts() {
             const saved = localStorage.getItem(storageKey);
             if (saved) {
-                JSON.parse(saved).forEach(addPostToDOM);
+                JSON.parse(saved).forEach(post => addPostToDOM(post, true));
             }
         }
 
-        function addPostToDOM(post) {
+        function addPostToDOM(post, append = false) {
             const div = document.createElement('div');
             div.className = 'post';
+            div.draggable = true;
             const title = document.createElement('h2');
             title.textContent = post.title;
             const content = document.createElement('p');
             content.textContent = post.content;
             div.appendChild(title);
             div.appendChild(content);
-            postsContainer.prepend(div);
+            if (append) {
+                postsContainer.appendChild(div);
+            } else {
+                postsContainer.prepend(div);
+            }
         }
 
-        function savePost(post) {
-            const posts = JSON.parse(localStorage.getItem(storageKey) || '[]');
-            posts.push(post);
+        function savePostsOrder() {
+            const posts = [];
+            postsContainer.querySelectorAll('.post').forEach(p => {
+                posts.push({
+                    title: p.querySelector('h2').textContent,
+                    content: p.querySelector('p').textContent
+                });
+            });
             localStorage.setItem(storageKey, JSON.stringify(posts));
         }
 
@@ -99,8 +114,43 @@
             };
             if (post.title && post.content) {
                 addPostToDOM(post);
-                savePost(post);
+                savePostsOrder();
                 form.reset();
+            }
+        });
+
+        postsContainer.addEventListener('dragstart', e => {
+            if (e.target.classList.contains('post')) {
+                dragged = e.target;
+            }
+        });
+
+        postsContainer.addEventListener('dragend', () => {
+            postsContainer.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        });
+
+        postsContainer.addEventListener('dragover', e => {
+            e.preventDefault();
+            const target = e.target.closest('.post');
+            if (target && target !== dragged) {
+                postsContainer.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+                target.classList.add('drag-over');
+                const bounding = target.getBoundingClientRect();
+                const offset = bounding.y + bounding.height / 2;
+                if (e.clientY - offset > 0) {
+                    postsContainer.insertBefore(dragged, target.nextSibling);
+                } else {
+                    postsContainer.insertBefore(dragged, target);
+                }
+            }
+        });
+
+        postsContainer.addEventListener('drop', e => {
+            e.preventDefault();
+            if (dragged) {
+                postsContainer.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+                savePostsOrder();
+                dragged = null;
             }
         });
 
