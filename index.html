@@ -84,7 +84,7 @@
     </div>
     <form id="postForm">
         <input type="text" id="title" placeholder="タイトル" required>
-        <textarea id="content" rows="5" placeholder="本文 ([image] で画像挿入)" required></textarea>
+        <textarea id="content" rows="5" placeholder="本文 ([image] または ![](URL) で画像挿入)" required></textarea>
         <input type="file" id="image" accept="image/*" multiple>
         <button type="submit">投稿</button>
     </form>
@@ -124,8 +124,15 @@
             return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
+        function escapeAttr(str) {
+            return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
         function renderContent(text, images = []) {
             let html = escapeHTML(text);
+            html = html.replace(/!\[(.*?)\]\((.*?)\)/g, (_, alt, url) => {
+                return `<img src="${escapeAttr(url)}" alt="${escapeAttr(alt)}">`;
+            });
             images.forEach(img => {
                 html = html.replace('[image]', `<img src="${img}">`);
             });
