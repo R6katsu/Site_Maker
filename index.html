@@ -60,6 +60,11 @@
         .post h2 {
             margin-top: 0;
         }
+        .timestamp {
+            font-size: 0.8em;
+            color: #555;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -95,6 +100,17 @@
             }
         }
 
+        function formatTimestamp(ts) {
+            const d = new Date(ts);
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const h = String(d.getHours()).padStart(2, '0');
+            const min = String(d.getMinutes()).padStart(2, '0');
+            const s = String(d.getSeconds()).padStart(2, '0');
+            return `${y}年${m}月${day}日${h}時${min}分${s}秒`;
+        }
+
         function addPostToDOM(post, append = false) {
             const div = document.createElement('div');
             div.className = 'post';
@@ -106,6 +122,10 @@
 
             const contentEl = document.createElement('p');
             contentEl.textContent = post.content;
+
+            const timeEl = document.createElement('div');
+            timeEl.className = 'timestamp';
+            timeEl.textContent = formatTimestamp(post.timestamp);
 
             const editBtn = document.createElement('button');
             editBtn.textContent = '編集';
@@ -144,6 +164,7 @@
 
             div.appendChild(titleEl);
             div.appendChild(contentEl);
+            div.appendChild(timeEl);
             div.appendChild(editBtn);
 
             if (append) {
