@@ -1,3 +1,110 @@
-<!-- <meta name="robots" content="noindex">�͐�΂ɏ����ȁI -->
-<meta name="robots" content="noindex">
-<!-- <meta name="robots" content="noindex">�͐�΂ɏ����ȁI -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>簡易ブログメーカー</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            text-align: center;
+        }
+        form {
+            background: #fff;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .posts {
+            margin-top: 20px;
+        }
+        .post {
+            background: #fff;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .post h2 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>ブログ作成サイト</h1>
+    <form id="postForm">
+        <input type="text" id="title" placeholder="タイトル" required>
+        <textarea id="content" rows="5" placeholder="本文" required></textarea>
+        <button type="submit">投稿</button>
+    </form>
+    <div class="posts" id="posts"></div>
+
+    <script>
+        const form = document.getElementById('postForm');
+        const postsContainer = document.getElementById('posts');
+        const storageKey = 'blog_posts';
+
+        function loadPosts() {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                JSON.parse(saved).forEach(addPostToDOM);
+            }
+        }
+
+        function addPostToDOM(post) {
+            const div = document.createElement('div');
+            div.className = 'post';
+            const title = document.createElement('h2');
+            title.textContent = post.title;
+            const content = document.createElement('p');
+            content.textContent = post.content;
+            div.appendChild(title);
+            div.appendChild(content);
+            postsContainer.prepend(div);
+        }
+
+        function savePost(post) {
+            const posts = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            posts.push(post);
+            localStorage.setItem(storageKey, JSON.stringify(posts));
+        }
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            const post = {
+                title: document.getElementById('title').value.trim(),
+                content: document.getElementById('content').value.trim()
+            };
+            if (post.title && post.content) {
+                addPostToDOM(post);
+                savePost(post);
+                form.reset();
+            }
+        });
+
+        loadPosts();
+    </script>
+</body>
+</html>
